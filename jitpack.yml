@@ -1,10 +1,8 @@
 # JitPack build for the PetalNet fork (consumed as com.github.PetalNet:umldoclet:<commit>).
 # Tests run in CI; JitPack only needs the shaded doclet jar.
-# The Maven wrapper's only-script mode fails on JitPack's image, so install Maven via SDKMAN instead.
+# JitPack's stock "openjdk21" (SDKMAN 21.0.2-open) cannot start Maven at all
+# (ClassNotFoundException: plexus-classworlds Launcher), so switch to Temurin 21 in the same shell.
 jdk:
-  - openjdk21
-before_install:
-  - sdk install maven 3.9.11
-  - sdk use maven 3.9.11
+  - openjdk17
 install:
-  - mvn -B install -DskipTests -Dmaven.javadoc.skip=true -DskipLicenseCheck
+  - sdk install java 21.0.8-tem > /dev/null && sdk use java 21.0.8-tem && ./mvnw -B install -DskipTests -Dmaven.javadoc.skip=true -DskipLicenseCheck
