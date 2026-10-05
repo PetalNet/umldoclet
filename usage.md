@@ -244,6 +244,22 @@ An example of an empty diagram is a package diagram for a package containing
 no classes by itself, just sub-packages.  
 The default for this setting is `false`.
 
+#### -umlMethodDependencies
+
+Draw dependencies (`A ..> B`) in package diagrams for types that visible methods use
+as parameter or return type.  
+Arrays, `Iterable`, `Stream`, `Optional` and `Map` types are unwrapped to their element types.
+Only types within the same package (other than the type itself) are drawn,
+targets already referenced from the same type (e.g. by a field association) are skipped,
+and each target is drawn only once.  
+This option is off by default.
+
+#### Map associations
+
+Fields and JavaBean properties whose type is a `java.util.Map` (or any subtype, such as `HashMap`)
+are rendered as an association to the map's *value* type with cardinality `"*"`.
+If the *key* type is also in the same package, an association `"<field> key"` is added for it as well.
+
 
 [maven-img]: https://img.shields.io/maven-central/v/nl.talsmasoftware/umldoclet.svg
 

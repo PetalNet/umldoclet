@@ -505,17 +505,13 @@ public class UMLFactory {
                 .forEach(field -> {
                     String fieldName = field.getSimpleName().toString();
                     TypeNameWithCardinality fieldType = typeNameWithCardinality.apply(field.asType());
-                    if (namespace.contains(fieldType.typeName)) {
-                        addReference(references, new Reference(
-                                Reference.from(type.getName().getQualified(separator), null),
-                                "-->",
-                                Reference.to(fieldType.typeName.getQualified(separator), fieldType.cardinality),
-                                fieldName));
+                    if (addAssociations(references, namespace, type, fieldType, fieldName, separator)) {
                         type.removeChildren(child -> child instanceof Field && ((Field) child).name.equals(fieldName));
                     }
                 });
 
         // Add 'uses' reference by replacing visible getters/setters
+        Set<ExecutableElement> propertyAssociations = new HashSet<>();
         typeElement.getEnclosedElements().stream()
                 .filter(member -> ElementKind.METHOD.equals(member.getKind()))
                 .filter(ExecutableElement.class::isInstance).map(ExecutableElement.class::cast)
@@ -524,19 +520,72 @@ public class UMLFactory {
                     String propertyName = propertyName(method);
                     if (propertyName != null) {
                         TypeNameWithCardinality returnType = typeNameWithCardinality.apply(propertyType(method));
-                        if (namespace.contains(returnType.typeName)) {
-                            addReference(references, new Reference(
-                                    Reference.from(type.getName().getQualified(separator), null),
-                                    "-->",
-                                    Reference.to(returnType.typeName.getQualified(separator), returnType.cardinality),
-                                    propertyName));
+                        if (addAssociations(references, namespace, type, returnType, propertyName, separator)) {
+                            propertyAssociations.add(method);
                             type.removeChildren(child -> child instanceof Method
                                     && ((Method) child).name.equals(method.getSimpleName().toString()));
                         }
                     }
                 });
 
+        // Add 'dependency' references for types used in visible method parameters and return types.
+        if (config.methods().methodDependencies()) {
+            typeElement.getEnclosedElements().stream()
+                    .filter(member -> ElementKind.METHOD.equals(member.getKind()))
+                    .filter(ExecutableElement.class::isInstance).map(ExecutableElement.class::cast)
+                    .filter(method -> config.methods().include(visibilityOf(method.getModifiers())))
+                    .filter(method -> !propertyAssociations.contains(method))
+                    .flatMap(method -> Stream.concat(
+                            Stream.of(method.getReturnType()),
+                            method.getParameters().stream().map(VariableElement::asType)))
+                    .map(typeNameWithCardinality)
+                    .flatMap(usedType -> Stream.of(usedType.typeName, usedType.keyTypeName))
+                    .filter(Objects::nonNull)
+                    .filter(namespace::contains)
+                    .filter(target -> !target.qualified.equals(type.getName().qualified))
+                    .filter(target -> !isReferenced(references, type.getName(), target, separator))
+                    .forEach(target -> addReference(references, new Reference(
+                            Reference.from(type.getName().getQualified(separator), null),
+                            "..>",
+                            Reference.to(target.getQualified(separator), null))));
+        }
+
         return references;
+    }
+
+    /// Adds association references (`-->`) for the given field or property type, if it is within the namespace.
+    ///
+    /// For `java.util.Map` types an association to the value type is added and,
+    /// if the key type is also within the namespace, an association labelled `"<name> key"` to the key type.
+    ///
+    /// @return `true` if the association to the (value) type was added, meaning the field or property is
+    /// represented by the association; `false` otherwise.
+    private static boolean addAssociations(Collection<Reference> references, Namespace namespace, Type type,
+                                           TypeNameWithCardinality memberType, String name, String separator) {
+        boolean represented = false;
+        if (namespace.contains(memberType.typeName)) {
+            addReference(references, new Reference(
+                    Reference.from(type.getName().getQualified(separator), null),
+                    "-->",
+                    Reference.to(memberType.typeName.getQualified(separator), memberType.cardinality),
+                    name));
+            represented = true;
+        }
+        if (memberType.keyTypeName != null && namespace.contains(memberType.keyTypeName)) {
+            addReference(references, new Reference(
+                    Reference.from(type.getName().getQualified(separator), null),
+                    "-->",
+                    Reference.to(memberType.keyTypeName.getQualified(separator), "*"),
+                    name + " key"));
+        }
+        return represented;
+    }
+
+    /// Whether a reference *from* the given type *to* the target already exists (e.g. association, extends).
+    private static boolean isReferenced(Collection<Reference> references, TypeName from, TypeName target, String separator) {
+        final String fromName = Reference.from(from.getQualified(separator), null).qualifiedName;
+        final String toName = Reference.to(target.getQualified(separator), null).qualifiedName;
+        return references.stream().anyMatch(ref -> ref.from.qualifiedName.equals(fromName) && ref.to.qualifiedName.equals(toName));
     }
 
     private static String propertyName(ExecutableElement method) {
