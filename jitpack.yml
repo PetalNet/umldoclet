@@ -1,0 +1,6 @@
+# JitPack build for the PetalNet fork (consumed as com.github.PetalNet:umldoclet:<commit>).
+# Tests run in CI; JitPack only needs the shaded doclet jar.
+jdk:
+  - openjdk21
+install:
+  - ./mvnw -B install -DskipTests -Dmaven.javadoc.skip=true -DskipLicenseCheck
