@@ -84,4 +84,57 @@ class MapAssociationsTest {
                 .doesNotContain(PKG + "ForeignValues -->")
                 .contains("-names: Map<Integer, String>");
     }
+
+    @Test
+    void nestedContainerInMapValueIsUnwrapped() {
+        assertThat(packageUml).contains(PKG + "NestedValues --> \"*\" " + PKG + "Customer: byRegion");
+    }
+
+    @Test
+    void mapInsideOptionalIsUnwrapped() {
+        assertThat(packageUml).contains(
+                PKG + "OptionalMap --> \"*\" " + PKG + "Purchasable: maybeCatalog",
+                PKG + "OptionalMap --> \"*\" " + PKG + "CustomerId: maybeCatalog key");
+    }
+
+    @Test
+    void arrayOfMapsIsUnwrapped() {
+        assertThat(packageUml).contains(
+                PKG + "MapArray --> \"*\" " + PKG + "Customer: shards",
+                PKG + "MapArray --> \"*\" " + PKG + "CustomerId: shards key");
+    }
+
+    @Test
+    void boundedWildcardMapValueIsUnwrapped() {
+        assertThat(packageUml).contains(PKG + "WildcardMap --> \"*\" " + PKG + "Purchasable: offers");
+    }
+
+    @Test
+    void rawMapIsNotUnwrapped() {
+        assertThat(packageUml)
+                .doesNotContain(PKG + "RawMap -->")
+                .contains("-raw: Map");
+    }
+
+    @Test
+    void mapTakesPriorityOverIterable() {
+        assertThat(packageUml)
+                .contains(PKG + "MapIterableHolder --> \"*\" " + PKG + "Customer: both")
+                .doesNotContain(PKG + "MapIterableHolder --> \"*\" " + PKG + "Purchasable");
+    }
+
+    @Test
+    void directIterableOptionalAndArrayBehaviourIsUnchanged() {
+        assertThat(packageUml).contains(
+                PKG + "DirectContainers --> \"*\" " + PKG + "Customer: list",
+                PKG + "DirectContainers --> \"0..1\" " + PKG + "Purchasable: maybe",
+                PKG + "DirectContainers --> \"*\" " + PKG + "CustomerId: ids");
+    }
+
+    @Test
+    void containerElementInNamespaceIsReferencedDirectly() {
+        assertThat(packageUml)
+                .contains(PKG + "GroupHolder --> \"*\" " + PKG + "CustomerGroup: groups")
+                .doesNotContain(PKG + "GroupHolder --> \"*\" " + PKG + "Customer:");
+    }
 }

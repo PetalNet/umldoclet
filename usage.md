@@ -247,11 +247,13 @@ The default for this setting is `false`.
 #### -umlMethodDependencies
 
 Draw dependencies (`A ..> B`) in package diagrams for types that visible methods use
-as parameter or return type.  
-Arrays, `Iterable`, `Stream`, `Optional` and `Map` types are unwrapped to their element types.
-Only types within the same package (other than the type itself) are drawn,
+as parameter or return type.
+
+Arrays, `Iterable`, `Stream`, `Optional` and `Map` types are unwrapped (also when nested) to their element types.
+Only types rendered in the same package diagram (other than the type itself, and not in subpackages) are drawn,
 targets already referenced from the same type (e.g. by a field association) are skipped,
-and each target is drawn only once.  
+and each target is drawn only once.
+
 This option is off by default.
 
 #### Map associations
@@ -259,6 +261,9 @@ This option is off by default.
 Fields and JavaBean properties whose type is a `java.util.Map` (or any subtype, such as `HashMap`)
 are rendered as an association to the map's *value* type with cardinality `"*"`.
 If the *key* type is also in the same package, an association `"<field> key"` is added for it as well.
+Nested containers such as `Map<String, List<Customer>>`, `Optional<Map<K, V>>` or `Map<K, V>[]`
+are unwrapped too, and `Map` takes priority over `Iterable` for types that are both.
+These associations only point to types rendered in the same package diagram, never into subpackages.
 
 
 [maven-img]: https://img.shields.io/maven-central/v/nl.talsmasoftware/umldoclet.svg

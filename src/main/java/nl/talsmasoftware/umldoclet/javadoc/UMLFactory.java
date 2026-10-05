@@ -539,9 +539,7 @@ public class UMLFactory {
                             Stream.of(method.getReturnType()),
                             method.getParameters().stream().map(VariableElement::asType)))
                     .map(typeNameWithCardinality)
-                    .flatMap(usedType -> Stream.of(usedType.typeName, usedType.keyTypeName))
-                    .filter(Objects::nonNull)
-                    .filter(namespace::contains)
+                    .flatMap(usedType -> renderedTargets(usedType, namespace))
                     .filter(target -> !target.qualified.equals(type.getName().qualified))
                     .filter(target -> !isReferenced(references, type.getName(), target, separator))
                     .forEach(target -> addReference(references, new Reference(
@@ -555,30 +553,81 @@ public class UMLFactory {
 
     /// Adds association references (`-->`) for the given field or property type, if it is within the namespace.
     ///
+    /// The first candidate of the (possibly nested) container chain that is part of the diagram is used.
     /// For `java.util.Map` types an association to the value type is added and,
-    /// if the key type is also within the namespace, an association labelled `"<name> key"` to the key type.
+    /// for each key type that is also rendered in the diagram, an association labelled `"<name> key"`.
     ///
     /// @return `true` if the association to the (value) type was added, meaning the field or property is
     /// represented by the association; `false` otherwise.
-    private static boolean addAssociations(Collection<Reference> references, Namespace namespace, Type type,
-                                           TypeNameWithCardinality memberType, String name, String separator) {
-        boolean represented = false;
-        if (namespace.contains(memberType.typeName)) {
+    private boolean addAssociations(Collection<Reference> references, Namespace namespace, Type type,
+                                    TypeNameWithCardinality memberType, String name, String separator) {
+        final TypeNameWithCardinality target = select(memberType, namespace);
+        if (target != null) {
             addReference(references, new Reference(
                     Reference.from(type.getName().getQualified(separator), null),
                     "-->",
-                    Reference.to(memberType.typeName.getQualified(separator), memberType.cardinality),
+                    Reference.to(target.typeName.getQualified(separator), target.cardinality),
                     name));
-            represented = true;
         }
-        if (memberType.keyTypeName != null && namespace.contains(memberType.keyTypeName)) {
-            addReference(references, new Reference(
-                    Reference.from(type.getName().getQualified(separator), null),
-                    "-->",
-                    Reference.to(memberType.keyTypeName.getQualified(separator), "*"),
-                    name + " key"));
+        for (TypeNameWithCardinality key : keysOf(memberType, target)) {
+            final TypeNameWithCardinality keyTarget = selectRendered(key, namespace);
+            if (keyTarget != null) {
+                addReference(references, new Reference(
+                        Reference.from(type.getName().getQualified(separator), null),
+                        "-->",
+                        Reference.to(keyTarget.typeName.getQualified(separator), "*"),
+                        name + " key"));
+            }
         }
-        return represented;
+        return target != null;
+    }
+
+    /// The types a method signature type refers to within the diagram (for dependencies): the first rendered
+    /// candidate of the container chain plus any rendered map key types.
+    private Stream<TypeName> renderedTargets(TypeNameWithCardinality usedType, Namespace namespace) {
+        final TypeNameWithCardinality target = selectRendered(usedType, namespace);
+        return Stream.concat(Stream.of(target),
+                        keysOf(usedType, target).stream().map(key -> selectRendered(key, namespace)))
+                .filter(Objects::nonNull)
+                .map(candidate -> candidate.typeName);
+    }
+
+    /// Key types encountered up to the selected candidate, or along the whole chain if none was selected.
+    private static List<TypeNameWithCardinality> keysOf(TypeNameWithCardinality chain, TypeNameWithCardinality selected) {
+        if (selected != null) return selected.keys;
+        TypeNameWithCardinality last = chain;
+        while (last.nested != null) last = last.nested;
+        return last.keys;
+    }
+
+    /// First candidate in the chain that is part of the diagram.
+    ///
+    /// Candidates produced by upstream code paths (a plain type, or a single array / `Iterable` / `Stream` /
+    /// `Optional`) keep the upstream [Namespace#contains] check, which also matches subpackages.
+    /// Candidates from new code paths (`Map`, nested containers) must be rendered in this very diagram.
+    private TypeNameWithCardinality select(TypeNameWithCardinality chain, Namespace namespace) {
+        for (TypeNameWithCardinality candidate = chain; candidate != null; candidate = candidate.nested) {
+            if (candidate.derived ? isRenderedIn(namespace, candidate) : namespace.contains(candidate.typeName)) {
+                return candidate;
+            }
+        }
+        return null;
+    }
+
+    /// First candidate in the chain that is rendered in the diagram of the namespace.
+    private TypeNameWithCardinality selectRendered(TypeNameWithCardinality chain, Namespace namespace) {
+        for (TypeNameWithCardinality candidate = chain; candidate != null; candidate = candidate.nested) {
+            if (isRenderedIn(namespace, candidate)) return candidate;
+        }
+        return null;
+    }
+
+    /// Whether the candidate is a documented type of exactly this package (not a subpackage),
+    /// i.e. a type that is actually rendered in the package diagram.
+    private boolean isRenderedIn(Namespace namespace, TypeNameWithCardinality candidate) {
+        return candidate.element instanceof TypeElement
+                && env.isIncluded(candidate.element)
+                && env.getElementUtils().getPackageOf(candidate.element).getQualifiedName().contentEquals(namespace.name);
     }
 
     /// Whether a reference *from* the given type *to* the target already exists (e.g. association, extends).
