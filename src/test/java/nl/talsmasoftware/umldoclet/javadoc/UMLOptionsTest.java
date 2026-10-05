@@ -123,4 +123,17 @@ class UMLOptionsTest {
         processOption("--uml-cyclic-package-dependencies", singletonList("failure"));
         assertThat(config.onCyclicPackageDependencies()).isEqualTo(Configuration.Action.ERROR);
     }
+
+    @Test
+    void testMethodDependencies() {
+        assertThat(config.methods().methodDependencies()).isFalse();
+        processOption("--uml-method-dependencies", List.of());
+        assertThat(config.methods().methodDependencies()).isTrue();
+    }
+
+    @Test
+    void testMethodDependenciesLegacyName() {
+        processOption("-umlMethodDependencies", List.of());
+        assertThat(config.methods().methodDependencies()).isTrue();
+    }
 }

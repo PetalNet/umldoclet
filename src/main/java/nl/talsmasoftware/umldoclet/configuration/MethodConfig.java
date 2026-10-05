@@ -65,4 +65,15 @@ public interface MethodConfig {
     /// @return `true` if JavaBean accessor methods should be rendered as Fields
     /// in the UML diagram, `false` to render them as normal methods.
     boolean javaBeanPropertiesAsFields();
+
+    /// Whether dependencies (`A ..> B`) should be drawn for types used as method parameter or return types.
+    ///
+    /// Only visible methods are considered, and only types within the diagram's namespace (other than the
+    /// type itself) that are not already referenced by an association or other reference from the same type.
+    ///
+    /// @return `true` if method parameter and return types should be rendered as dependencies in package
+    /// diagrams, `false` (the default) to not render any method dependencies.
+    default boolean methodDependencies() {
+        return false;
+    }
 }

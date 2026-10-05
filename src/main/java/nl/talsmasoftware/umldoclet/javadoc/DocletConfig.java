@@ -339,6 +339,7 @@ public class DocletConfig implements Configuration {
         TypeDisplay returnType = TypeDisplay.SIMPLE;
         Set<Visibility> visibilities = EnumSet.of(PROTECTED, PUBLIC);
         boolean javaBeanPropertiesAsFields = false;
+        boolean methodDependencies = false;
 
         @Override
         public ParamNames paramNames() {
@@ -363,6 +364,11 @@ public class DocletConfig implements Configuration {
         @Override
         public boolean javaBeanPropertiesAsFields() {
             return javaBeanPropertiesAsFields;
+        }
+
+        @Override
+        public boolean methodDependencies() {
+            return methodDependencies;
         }
     }
 }

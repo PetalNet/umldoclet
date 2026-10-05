@@ -1,0 +1,24 @@
+#
+# Copyright 2016-2026 Talsma ICT
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#        http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+# JitPack build for the PetalNet fork (consumed as com.github.PetalNet:umldoclet:<commit>).
+# Tests run in CI; JitPack only needs the shaded doclet jar.
+# JitPack's stock "openjdk21" (SDKMAN 21.0.2-open) cannot start Maven at all
+# (ClassNotFoundException: plexus-classworlds Launcher), so switch to Temurin 21 in the same shell.
+jdk:
+  - openjdk17
+install:
+  - sdk install java 21.0.8-tem > /dev/null && sdk use java 21.0.8-tem && ./mvnw -B install -DskipTests -Dmaven.javadoc.skip=true -DskipLicenseCheck
